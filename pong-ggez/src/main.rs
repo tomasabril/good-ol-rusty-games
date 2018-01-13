@@ -95,30 +95,44 @@ impl Player {
 
     pub fn move_up(&mut self) {
         self.y -= PLAYER_SPEED;
+        if self.y <= 0.0 {
+            self.y = 0.0;
+        }
     }
 
     pub fn move_down(&mut self) {
         self.y += PLAYER_SPEED;
+        if self.y + PLAYER_H >= WINDOW_H as f32 {
+            self.y = WINDOW_H as f32 - PLAYER_H;
+        }
     }
 }
 
 struct MainState {
     score: (u32, u32),
+    score_changed: bool,
     player_l: Player,
     player_r: Player,
     ball: Ball,
+    score_display: graphics::Text,
 }
 
 impl MainState {
-    fn new(_ctx: &mut Context) -> GameResult<MainState> {
+    fn new(ctx: &mut Context) -> GameResult<MainState> {
+        let font = graphics::Font::new(ctx, "/DejaVuSerif.ttf", 18)?;
+        let text_to_display = format!("Score: 0x0");
+        let text = graphics::Text::new(ctx, &text_to_display, &font)?;
         let s = MainState {
             score: (0, 0),
-            player_l: Player::new(_ctx, PlayerSide::Left),
-            player_r: Player::new(_ctx, PlayerSide::Right),
-            ball: Ball::new(_ctx),
+            score_changed: false,
+            player_l: Player::new(ctx, PlayerSide::Left),
+            player_r: Player::new(ctx, PlayerSide::Right),
+            ball: Ball::new(ctx),
+            score_display: text,
         };
         Ok(s)
     }
+
     pub fn collision(&mut self) {
         //ball collision with top or bottom
         if self.ball.y - self.ball.radius <= 0.0
@@ -142,6 +156,7 @@ impl MainState {
             self.ball.vel_y = rng.gen::<f32>();
             self.ball.x = WINDOW_W as f32 / 2.0;
             self.ball.y = WINDOW_H as f32 / 2.0;
+            self.score_changed = true;
         }
 
         //ball collision with player left
@@ -163,9 +178,19 @@ impl MainState {
 }
 
 impl event::EventHandler for MainState {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult<()> {
+    fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         self.ball.update();
         self.collision();
+
+        // new score text
+        if self.score_changed {
+            let font = graphics::Font::new(ctx, "/DejaVuSerif.ttf", 18)?;
+            let text_to_display = format!("Score: {}x{}", self.score.0, self.score.1);
+            let text = graphics::Text::new(ctx, &text_to_display, &font)?;
+            self.score_display = text;
+            self.score_changed = false;
+        }
+
         Ok(())
     }
 
@@ -175,6 +200,9 @@ impl event::EventHandler for MainState {
         self.player_l.draw(ctx)?;
         self.player_r.draw(ctx)?;
         self.ball.draw(ctx)?;
+        //score
+        let dest_point = graphics::Point2::new(50.0, 20.0);
+        graphics::draw(ctx, &self.score_display, dest_point, 0.0)?;
 
         graphics::present(ctx);
         Ok(())
