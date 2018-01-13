@@ -7,7 +7,7 @@ use ggez::conf;
 use ggez::event;
 use ggez::{Context, GameResult};
 use ggez::graphics;
-use ggez::graphics::{Color, DrawMode, Point2};
+use ggez::graphics::{DrawMode, Point2};
 
 use std::{env, path};
 use std::time::Duration;
@@ -54,7 +54,7 @@ impl Ball {
     }
 
     pub fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
-        let dst = graphics::Point2::new(self.x, self.y);
+        let dst = Point2::new(self.x, self.y);
         graphics::circle(ctx, DrawMode::Fill, dst, self.radius, 1.0)?;
         Ok(())
     }
@@ -110,6 +110,7 @@ impl Player {
 
 struct MainState {
     score: (u32, u32),
+    hits: u32,
     score_changed: bool,
     player_l: Player,
     player_r: Player,
@@ -124,6 +125,7 @@ impl MainState {
         let text = graphics::Text::new(ctx, &text_to_display, &font)?;
         let s = MainState {
             score: (0, 0),
+            hits: 0,
             score_changed: false,
             player_l: Player::new(ctx, PlayerSide::Left),
             player_r: Player::new(ctx, PlayerSide::Right),
@@ -157,22 +159,36 @@ impl MainState {
             self.ball.x = WINDOW_W as f32 / 2.0;
             self.ball.y = WINDOW_H as f32 / 2.0;
             self.score_changed = true;
+            timer::sleep(Duration::from_secs(1));
+            self.hits = 0;
         }
 
         //ball collision with player left
         if self.ball.x - self.ball.radius <= self.player_l.x + PLAYER_W + 0.2
             && self.ball.y > self.player_l.y && self.ball.y < self.player_l.y + PLAYER_H
         {
+            let player_midy = self.player_l.y + PLAYER_H / 2.0;
+            let dif_y = self.ball.y - player_midy;
+            self.ball.vel_y += dif_y / 20.0;
+
             self.ball.vel_x -= BALL_ACC;
             self.ball.vel_x *= -1.0;
+            self.hits += 1;
+            self.score_changed = true;
         }
 
         //ball collision with player right
         if self.ball.x + self.ball.radius >= self.player_r.x - 0.2 && self.ball.y > self.player_r.y
             && self.ball.y < self.player_r.y + PLAYER_H
         {
+            let player_midy = self.player_r.y + PLAYER_H / 2.0;
+            let dif_y = self.ball.y - player_midy;
+            self.ball.vel_y += dif_y / 30.0;
+
             self.ball.vel_x += BALL_ACC;
             self.ball.vel_x *= -1.0;
+            self.hits += 1;
+            self.score_changed = true;
         }
     }
 }
@@ -185,7 +201,10 @@ impl event::EventHandler for MainState {
         // new score text
         if self.score_changed {
             let font = graphics::Font::new(ctx, "/DejaVuSerif.ttf", 18)?;
-            let text_to_display = format!("Score: {}x{}", self.score.0, self.score.1);
+            let text_to_display = format!(
+                "Score: {}x{} - Hits: {}",
+                self.score.0, self.score.1, self.hits
+            );
             let text = graphics::Text::new(ctx, &text_to_display, &font)?;
             self.score_display = text;
             self.score_changed = false;
@@ -197,11 +216,19 @@ impl event::EventHandler for MainState {
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx);
 
+        let mid_rect = graphics::Rect::new(
+            WINDOW_W as f32 / 2.0 - 5.0,
+            10.0,
+            5.0,
+            WINDOW_H as f32 - 20.0,
+        );
+        graphics::rectangle(ctx, DrawMode::Line(1.0), mid_rect)?;
+
         self.player_l.draw(ctx)?;
         self.player_r.draw(ctx)?;
         self.ball.draw(ctx)?;
         //score
-        let dest_point = graphics::Point2::new(50.0, 20.0);
+        let dest_point = Point2::new(50.0, 20.0);
         graphics::draw(ctx, &self.score_display, dest_point, 0.0)?;
 
         graphics::present(ctx);

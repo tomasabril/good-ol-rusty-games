@@ -4,7 +4,7 @@ Old games remade in rust
 ## some ideas
 
 - snake - ✓
-- pong
+- pong - ✓
 - frogger
 - breakout
 - asteroids
