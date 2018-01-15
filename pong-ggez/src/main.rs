@@ -1,12 +1,8 @@
 extern crate ggez;
 extern crate rand;
 
-use ggez::*;
-use ggez::event::*;
-use ggez::conf;
-use ggez::event;
-use ggez::{Context, GameResult};
-use ggez::graphics;
+use ggez::event::{Keycode, Mod};
+use ggez::{conf, event, graphics, timer, Context, ContextBuilder, GameResult};
 use ggez::graphics::{DrawMode, Point2};
 
 use std::{env, path};
@@ -14,12 +10,12 @@ use std::time::Duration;
 
 use rand::Rng;
 
-const WINDOW_W: u32 = 800;
-const WINDOW_H: u32 = 600;
+const WINDOW_W: u32 = 900;
+const WINDOW_H: u32 = 700;
 
 const PLAYER_W: f32 = 32.0;
 const PLAYER_H: f32 = 128.0;
-const PLAYER_SPEED: f32 = 10.0;
+const PLAYER_SPEED: f32 = 3.5;
 const BALL_ACC: f32 = 0.2;
 
 struct Ball {
@@ -35,7 +31,7 @@ impl Ball {
     fn new(_ctx: &mut Context) -> Ball {
         let mut rng = rand::thread_rng();
         let mut vel_x = rng.gen::<f32>();
-        vel_x += 1.0;
+        vel_x += 2.0;
         let vel_y = rng.gen::<f32>();
 
         Ball {
@@ -69,6 +65,8 @@ struct Player {
     side: PlayerSide,
     x: f32,
     y: f32,
+    vel_y: f32,
+    moving: bool,
 }
 
 impl Player {
@@ -80,11 +78,22 @@ impl Player {
             },
             y: 300.0,
             side: side,
+            vel_y: 0.0,
+            moving: false,
         }
     }
 
     pub fn update(&mut self) {
         // called every frame
+        if self.moving {
+            self.y += self.vel_y;
+        }
+        if self.y <= 0.0 {
+            self.y = 0.0;
+        }
+        if self.y + PLAYER_H >= WINDOW_H as f32 {
+            self.y = WINDOW_H as f32 - PLAYER_H;
+        }
     }
 
     pub fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
@@ -94,17 +103,17 @@ impl Player {
     }
 
     pub fn move_up(&mut self) {
-        self.y -= PLAYER_SPEED;
-        if self.y <= 0.0 {
-            self.y = 0.0;
-        }
+        self.vel_y = -PLAYER_SPEED;
+        self.moving = true;
     }
 
     pub fn move_down(&mut self) {
-        self.y += PLAYER_SPEED;
-        if self.y + PLAYER_H >= WINDOW_H as f32 {
-            self.y = WINDOW_H as f32 - PLAYER_H;
-        }
+        self.vel_y = PLAYER_SPEED;
+        self.moving = true;
+    }
+
+    pub fn stop(&mut self) {
+        self.moving = false;
     }
 }
 
@@ -137,11 +146,15 @@ impl MainState {
 
     pub fn collision(&mut self) {
         //ball collision with top or bottom
-        if self.ball.y - self.ball.radius <= 0.0
-            || self.ball.y + self.ball.radius >= WINDOW_H as f32
-        {
+        if self.ball.y - self.ball.radius <= 0.0 {
             self.ball.vel_y *= -1.0;
+            self.ball.y += 0.1;
         }
+        if self.ball.y + self.ball.radius >= WINDOW_H as f32 {
+            self.ball.vel_y *= -1.0;
+            self.ball.y -= 0.1;
+        }
+
         //ball collision with left and right
         // score
         if self.ball.x < 0.0 {
@@ -165,7 +178,8 @@ impl MainState {
 
         //ball collision with player left
         if self.ball.x - self.ball.radius <= self.player_l.x + PLAYER_W + 0.2
-            && self.ball.y > self.player_l.y && self.ball.y < self.player_l.y + PLAYER_H
+            && self.ball.y + self.ball.radius / 2.0 >= self.player_l.y
+            && self.ball.y - self.ball.radius / 2.0 < self.player_l.y + PLAYER_H
         {
             let player_midy = self.player_l.y + PLAYER_H / 2.0;
             let dif_y = self.ball.y - player_midy;
@@ -175,11 +189,15 @@ impl MainState {
             self.ball.vel_x *= -1.0;
             self.hits += 1;
             self.score_changed = true;
+            if self.ball.x <= PLAYER_W + self.player_l.x {
+                self.ball.x = PLAYER_W + self.player_l.x + 1.0 + self.ball.radius;
+            }
         }
 
         //ball collision with player right
-        if self.ball.x + self.ball.radius >= self.player_r.x - 0.2 && self.ball.y > self.player_r.y
-            && self.ball.y < self.player_r.y + PLAYER_H
+        if self.ball.x + self.ball.radius >= self.player_r.x - 0.2
+            && self.ball.y + self.ball.radius / 2.0 > self.player_r.y
+            && self.ball.y - self.ball.radius / 2.0 < self.player_r.y + PLAYER_H
         {
             let player_midy = self.player_r.y + PLAYER_H / 2.0;
             let dif_y = self.ball.y - player_midy;
@@ -189,12 +207,17 @@ impl MainState {
             self.ball.vel_x *= -1.0;
             self.hits += 1;
             self.score_changed = true;
+            if self.ball.x >= self.player_r.x {
+                self.ball.x = self.player_r.x - 1.0 - self.ball.radius;
+            }
         }
     }
 }
 
 impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
+        self.player_l.update();
+        self.player_r.update();
         self.ball.update();
         self.collision();
 
@@ -235,6 +258,18 @@ impl event::EventHandler for MainState {
         Ok(())
     }
 
+    fn key_up_event(&mut self, _ctx: &mut ggez::Context, keycode: Keycode, _: Mod, _: bool) {
+        match keycode {
+            Keycode::A | Keycode::Z => {
+                self.player_l.stop();
+            }
+            Keycode::Up | Keycode::Down => {
+                self.player_r.stop();
+            }
+            _ => {}
+        }
+    }
+
     fn key_down_event(&mut self, _ctx: &mut ggez::Context, keycode: Keycode, _: Mod, _: bool) {
         match keycode {
             Keycode::A => {
@@ -256,7 +291,7 @@ impl event::EventHandler for MainState {
 
 pub fn main() {
     let mut cb = ContextBuilder::new("classic", "ggez")
-        .window_setup(conf::WindowSetup::default().title("good game"))
+        .window_setup(conf::WindowSetup::default().title("Pong"))
         .window_mode(conf::WindowMode::default().dimensions(WINDOW_W, WINDOW_H));
 
     if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
