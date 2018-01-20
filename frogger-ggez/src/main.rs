@@ -8,12 +8,10 @@ use ggez::graphics::{set_color, Color, DrawMode, Point2};
 use std::{env, path};
 use std::time::Duration;
 
-const WINDOW_W: u32 = 900;
-const WINDOW_H: u32 = 700;
-
 const BLOCK_SIZE: f32 = 32.0;
 
-const MAX_ENEMIES: u32 = 30;
+const WINDOW_W: u32 = BLOCK_SIZE as u32 * 25;
+const WINDOW_H: u32 = BLOCK_SIZE as u32 * 20;
 
 struct GameRect {
     x: f32,
@@ -44,7 +42,6 @@ impl GameRect {
 struct Frog {
     body: GameRect,
 }
-
 impl Frog {
     fn new(ctx: &mut Context) -> Frog {
         Frog {
@@ -64,6 +61,27 @@ impl Frog {
         self.body.draw(ctx)?;
         Ok(())
     }
+
+    pub fn move_up(&mut self) {
+        if self.body.y - BLOCK_SIZE > 0.0 {
+            self.body.y -= BLOCK_SIZE;
+        }
+    }
+    pub fn move_down(&mut self) {
+        if self.body.y + BLOCK_SIZE < WINDOW_H as f32 {
+            self.body.y += BLOCK_SIZE;
+        }
+    }
+    pub fn move_right(&mut self) {
+        if self.body.x + BLOCK_SIZE < WINDOW_W as f32 - BLOCK_SIZE {
+            self.body.x += BLOCK_SIZE;
+        }
+    }
+    pub fn move_left(&mut self) {
+        if self.body.x - BLOCK_SIZE > 0.0 {
+            self.body.x -= BLOCK_SIZE;
+        }
+    }
 }
 
 struct Enemy {
@@ -71,7 +89,6 @@ struct Enemy {
     vel_x: f32,
     lane: u32,
 }
-
 impl Enemy {
     fn new(ctx: &mut Context) -> Enemy {
         let lane = rand::random::<u32>() % 12;
@@ -110,6 +127,7 @@ impl Enemy {
 }
 
 struct MainState {
+    max_enemies: u32,
     score: u32,
     score_changed: bool,
     score_display: graphics::Text,
@@ -117,14 +135,14 @@ struct MainState {
     player: Frog,
     enms: Vec<Enemy>,
 }
-
 impl MainState {
     fn new(ctx: &mut Context) -> GameResult<MainState> {
-        let font = graphics::Font::new(ctx, "/DejaVuSerif.ttf", 18)?;
+        let font = graphics::Font::new(ctx, "/DejaVuSerif.ttf", 22)?;
         let text_to_display = format!("Score: 0");
         let text = graphics::Text::new(ctx, &text_to_display, &font)?;
         let enms = vec![];
         let s = MainState {
+            max_enemies: 22,
             score: 0,
             score_changed: false,
             score_display: text,
@@ -137,8 +155,37 @@ impl MainState {
 
 impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
+        // check if won
+        if self.player.body.y <= WINDOW_H as f32 - BLOCK_SIZE * 18.0 {
+            timer::sleep(Duration::from_secs(1));
+            self.score += 1;
+            self.score_changed = true;
+            self.player.body.y = WINDOW_H as f32 - 1.0 * BLOCK_SIZE;
+            self.max_enemies += 1;
+        }
+
+        //check collisions
+        for e in self.enms.iter() {
+            if collision(&self.player.body, &e.body) {
+                //you died
+                timer::sleep(Duration::from_secs(1));
+                self.player.body.y = WINDOW_H as f32 - 1.0 * BLOCK_SIZE;
+            }
+        }
+
+        //delete out of screen enemies
+        let mut tmpv = vec![];
+        for (index, e) in self.enms.iter().enumerate() {
+            if e.body.x > WINDOW_W as f32 + BLOCK_SIZE || e.body.x + e.body.w + BLOCK_SIZE < 0.0 {
+                tmpv.push(index);
+            }
+        }
+        for i in tmpv {
+            self.enms.swap_remove(i);
+        }
+
         // create new enemies
-        if (self.enms.len() as u32) < MAX_ENEMIES {
+        if (self.enms.len() as u32) < self.max_enemies {
             self.enms.push(Enemy::new(ctx));
         }
 
@@ -149,7 +196,7 @@ impl event::EventHandler for MainState {
 
         // new score text
         if self.score_changed {
-            let font = graphics::Font::new(ctx, "/DejaVuSerif.ttf", 18)?;
+            let font = graphics::Font::new(ctx, "/DejaVuSerif.ttf", 22)?;
             let text_to_display = format!("Score: {}", self.score);
             let text = graphics::Text::new(ctx, &text_to_display, &font)?;
             self.score_display = text;
@@ -162,10 +209,22 @@ impl event::EventHandler for MainState {
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx);
 
+        // end bar
+        set_color(ctx, Color::new(0.0, 1.0, 1.0, 0.5))?;
+        let rect = graphics::Rect::new(
+            0.0,
+            WINDOW_H as f32 - BLOCK_SIZE * 18.0,
+            WINDOW_W as f32,
+            BLOCK_SIZE,
+        );
+        graphics::rectangle(ctx, DrawMode::Fill, rect)?;
+
         //score
+        set_color(ctx, graphics::WHITE)?;
         let dest_point = Point2::new(50.0, 20.0);
         graphics::draw(ctx, &self.score_display, dest_point, 0.0)?;
 
+        // player and enemies
         self.player.draw(ctx)?;
         for e in &mut self.enms {
             e.draw(ctx)?;
@@ -177,13 +236,22 @@ impl event::EventHandler for MainState {
 
     fn key_down_event(&mut self, _ctx: &mut ggez::Context, keycode: Keycode, _: Mod, _: bool) {
         match keycode {
-            Keycode::Up => {}
-            Keycode::Down => {}
-            Keycode::Right => {}
-            Keycode::Left => {}
+            Keycode::Up => self.player.move_up(),
+            Keycode::Down => self.player.move_down(),
+            Keycode::Right => self.player.move_right(),
+            Keycode::Left => self.player.move_left(),
 
             _ => {}
         }
+    }
+}
+
+/// from <https://silentmatt.com/rectangle-intersection/>
+fn collision(o1: &GameRect, o2: &GameRect) -> bool {
+    if o1.x < o2.x + o2.w && o1.x + o1.w > o2.x && o1.y < o2.y + o2.h && o1.y + o1.h > o2.y {
+        true
+    } else {
+        false
     }
 }
 
