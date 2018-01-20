@@ -128,6 +128,7 @@ impl Enemy {
 
 struct MainState {
     max_enemies: u32,
+    lives: i32,
     score: u32,
     score_changed: bool,
     score_display: graphics::Text,
@@ -138,13 +139,13 @@ struct MainState {
 impl MainState {
     fn new(ctx: &mut Context) -> GameResult<MainState> {
         let font = graphics::Font::new(ctx, "/DejaVuSerif.ttf", 22)?;
-        let text_to_display = format!("Score: 0");
-        let text = graphics::Text::new(ctx, &text_to_display, &font)?;
+        let text = graphics::Text::new(ctx, &"begin", &font)?;
         let enms = vec![];
         let s = MainState {
             max_enemies: 22,
+            lives: 15,
             score: 0,
-            score_changed: false,
+            score_changed: true,
             score_display: text,
             player: Frog::new(ctx),
             enms: enms,
@@ -161,6 +162,7 @@ impl event::EventHandler for MainState {
             self.score += 1;
             self.score_changed = true;
             self.player.body.y = WINDOW_H as f32 - 1.0 * BLOCK_SIZE;
+            self.player.body.x = 5.0 * BLOCK_SIZE;
             self.max_enemies += 1;
         }
 
@@ -168,8 +170,11 @@ impl event::EventHandler for MainState {
         for e in self.enms.iter() {
             if collision(&self.player.body, &e.body) {
                 //you died
+                self.lives -= 1;
                 timer::sleep(Duration::from_secs(1));
                 self.player.body.y = WINDOW_H as f32 - 1.0 * BLOCK_SIZE;
+                self.player.body.x = 5.0 * BLOCK_SIZE;
+                self.score_changed = true;
             }
         }
 
@@ -197,7 +202,7 @@ impl event::EventHandler for MainState {
         // new score text
         if self.score_changed {
             let font = graphics::Font::new(ctx, "/DejaVuSerif.ttf", 22)?;
-            let text_to_display = format!("Score: {}", self.score);
+            let text_to_display = format!("Score: {} Lives: {}", self.score, self.lives);
             let text = graphics::Text::new(ctx, &text_to_display, &font)?;
             self.score_display = text;
             self.score_changed = false;
@@ -230,18 +235,29 @@ impl event::EventHandler for MainState {
             e.draw(ctx)?;
         }
 
+        //dead
+        if self.lives < 0 {
+            let font = graphics::Font::new(ctx, "/DejaVuSerif.ttf", 44)?;
+            let text = graphics::Text::new(ctx, "You Ded :(", &font)?;
+            set_color(ctx, graphics::WHITE)?;
+            let dest_point = Point2::new(WINDOW_W as f32 / 2.0, WINDOW_H as f32 / 2.0);
+            graphics::draw(ctx, &text, dest_point, 0.0)?;
+        }
+
         graphics::present(ctx);
         Ok(())
     }
 
     fn key_down_event(&mut self, _ctx: &mut ggez::Context, keycode: Keycode, _: Mod, _: bool) {
-        match keycode {
-            Keycode::Up => self.player.move_up(),
-            Keycode::Down => self.player.move_down(),
-            Keycode::Right => self.player.move_right(),
-            Keycode::Left => self.player.move_left(),
+        if self.lives >= 0 {
+            match keycode {
+                Keycode::Up => self.player.move_up(),
+                Keycode::Down => self.player.move_down(),
+                Keycode::Right => self.player.move_right(),
+                Keycode::Left => self.player.move_left(),
 
-            _ => {}
+                _ => {}
+            }
         }
     }
 }
