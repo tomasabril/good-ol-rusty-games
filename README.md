@@ -5,7 +5,7 @@ Old games remade in rust
 
 - snake - ✓
 - pong - ✓
-- frogger
+- frogger - ✓
 - breakout
 - asteroids
 - tetris
