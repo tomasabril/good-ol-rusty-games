@@ -39,6 +39,11 @@ impl GameRect {
     }
 }
 
+struct Ball {}
+
+struct Player {}
+
+struct blocks {}
 
 struct MainState {
     max_enemies: u32,
@@ -46,7 +51,6 @@ struct MainState {
     score: u32,
     score_changed: bool,
     score_display: graphics::Text,
-
 }
 impl MainState {
     fn new(ctx: &mut Context) -> GameResult<MainState> {
@@ -59,7 +63,6 @@ impl MainState {
             score: 0,
             score_changed: true,
             score_display: text,
-
         };
         Ok(s)
     }
@@ -97,7 +100,6 @@ impl event::EventHandler for MainState {
 
         // player and enemies
 
-
         //dead
         if self.lives < 0 {
             let font = graphics::Font::new(ctx, "/DejaVuSerif.ttf", 44)?;
@@ -118,7 +120,6 @@ impl event::EventHandler for MainState {
                 // Keycode::Down => self.player.move_down(),
                 // Keycode::Right => self.player.move_right(),
                 // Keycode::Left => self.player.move_left(),
-
                 _ => {}
             }
         }
