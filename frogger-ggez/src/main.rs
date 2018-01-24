@@ -179,15 +179,7 @@ impl event::EventHandler for MainState {
         }
 
         //delete out of screen enemies
-        let mut tmpv = vec![];
-        for (index, e) in self.enms.iter().enumerate() {
-            if e.body.x > WINDOW_W as f32 + BLOCK_SIZE || e.body.x + e.body.w + BLOCK_SIZE < 0.0 {
-                tmpv.push(index);
-            }
-        }
-        for i in tmpv {
-            self.enms.swap_remove(i);
-        }
+        self.enms.retain(|e| e.body.x < WINDOW_W as f32 + BLOCK_SIZE && e.body.x + e.body.w + BLOCK_SIZE > 0.0);
 
         // create new enemies
         if (self.enms.len() as u32) < self.max_enemies {
