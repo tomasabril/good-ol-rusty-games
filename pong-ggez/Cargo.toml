@@ -2,6 +2,7 @@
 name = "pong-ggez"
 version = "0.1.0"
 authors = ["Tomás Abril <tomasabril@fake.noreply.com>"]
+edition = "2018"
 
 [dependencies]
 ggez = "0.4.1"
