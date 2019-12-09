@@ -1,12 +1,9 @@
-extern crate ggez;
-extern crate rand;
-
 use ggez::event::{Keycode, Mod};
-use ggez::{conf, event, graphics, timer, Context, ContextBuilder, GameResult};
 use ggez::graphics::{DrawMode, Point2};
+use ggez::{conf, event, graphics, timer, Context, ContextBuilder, GameResult};
 
-use std::{env, path};
 use std::time::Duration;
+use std::{env, path};
 
 use rand::Rng;
 
@@ -24,7 +21,6 @@ struct Ball {
     vel_x: f32,
     vel_y: f32,
     radius: f32,
-    // sprite: graphics::Image,
 }
 
 impl Ball {
@@ -62,7 +58,6 @@ enum PlayerSide {
 }
 
 struct Player {
-    side: PlayerSide,
     x: f32,
     y: f32,
     vel_y: f32,
@@ -77,7 +72,6 @@ impl Player {
                 PlayerSide::Right => WINDOW_W as f32 - 40.0,
             },
             y: 300.0,
-            side: side,
             vel_y: 0.0,
             moving: false,
         }
