@@ -1,9 +1,9 @@
 use ggez::event::{Keycode, Mod};
-use ggez::{conf, event, graphics, timer, Context, ContextBuilder, GameResult};
 use ggez::graphics::{DrawMode, Point2};
+use ggez::{conf, event, graphics, timer, Context, ContextBuilder, GameResult};
 
-use std::{env, path};
 use std::time::Duration;
+use std::{env, path};
 
 use rand::Rng;
 
