@@ -1,6 +1,3 @@
-extern crate ggez;
-extern crate rand;
-
 use ggez::event::{Keycode, Mod};
 use ggez::{conf, event, graphics, timer, Context, ContextBuilder, GameResult};
 use ggez::graphics::{DrawMode, Point2};
