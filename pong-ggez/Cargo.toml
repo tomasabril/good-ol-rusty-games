@@ -4,5 +4,5 @@ version = "0.1.0"
 authors = ["Tomás Abril <tomasabril@fake.noreply.com>"]
 
 [dependencies]
-ggez = "0.4.0"
+ggez = "0.4.1"
 rand = "0.4.2"
