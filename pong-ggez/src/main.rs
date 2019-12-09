@@ -21,7 +21,6 @@ struct Ball {
     vel_x: f32,
     vel_y: f32,
     radius: f32,
-    // sprite: graphics::Image,
 }
 
 impl Ball {
