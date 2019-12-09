@@ -62,7 +62,6 @@ enum PlayerSide {
 }
 
 struct Player {
-    side: PlayerSide,
     x: f32,
     y: f32,
     vel_y: f32,
@@ -77,7 +76,6 @@ impl Player {
                 PlayerSide::Right => WINDOW_W as f32 - 40.0,
             },
             y: 300.0,
-            side: side,
             vel_y: 0.0,
             moving: false,
         }
